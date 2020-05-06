@@ -3,6 +3,7 @@
 
 // Packages
 
+import { TYPE_CELL, TYPE_PROTEIN } from '../consts.js'
 import { Singleton } from '../utils/Singleton.js'
 import { HyritConfig } from '../HyritConfig.js'
 
@@ -20,8 +21,9 @@ export const DataManager = class extends Singleton
 	{
 		super()
 
-		this.stage = null
 		this.entities = null
+		this.entMap = null
+		this.entityTypes = null
 	}
 
 	init ()
@@ -30,6 +32,10 @@ export const DataManager = class extends Singleton
 
 		this.size = config.size
 		this.entities = {}
+		this.entMap = {}
+		this.entityTypes = [TYPE_PROTEIN, TYPE_CELL]
+
+		for (const type of this.entityTypes) this.entMap[type] = {}
 
 		this._init()
 	}
@@ -37,5 +43,33 @@ export const DataManager = class extends Singleton
 	entityList ()
 	{
 		return Object.keys(this.entities).map(id => this.entities[id])
+	}
+
+	addEntity (entity)
+	{
+		this.entities[entity.id] = entity
+		this.entMap[entity.type][entity.id] = entity
+	}
+
+	delEntity (entity)
+	{
+		delete this.entities[entity.id]
+		delete this.entMap[entity.type][entity.id]
+	}
+
+	getEntity (id)
+	{
+		return this.entities[id] || null
+	}
+
+	getEntities (type)
+	{
+		return this.entMap[type] || null
+	}
+
+	getEntitiesList (type)
+	{
+		const map = this.getEntities(type)
+		return map ? Object.keys(map).map(id => this.getEntity(id)) : null
 	}
 }

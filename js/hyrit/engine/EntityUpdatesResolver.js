@@ -3,22 +3,17 @@
 
 // Dependences
 
+import { TYPE_CELL, TYPE_PROTEIN } from '../consts.js'
 import { Singleton } from '../utils/Singleton.js'
-
 import { DataManager } from '../managers/DataManager.js'
-
 import { EntitiesManager } from '../managers/EntitiesManager.js'
-
 import { Vector } from '../utils/Vector.js'
-
 import { circleCollision } from '../utils/Utils.js'
 
 
 // General
 
-let dataM = null
-
-let entitiesM = null
+let dataM, entitiesM
 
 
 // Class
@@ -53,6 +48,19 @@ export const EntityUpdatesResolver = class extends Singleton
 		this[handlerName]()
 	}
 
+	tickUpdate_protein ()
+	{
+		if (!this.hasEnoughtMass())
+		{
+			entitiesM.kill(this.entity)
+			return
+		}
+
+		this.grow()
+		this.rotate()
+		this.tryToBeCell()
+	}
+
 	tickUpdate_cell ()
 	{
 		this.decay()
@@ -68,13 +76,20 @@ export const EntityUpdatesResolver = class extends Singleton
 
 		if (hasTarget)
 		{
-			if (this.targetIs('place') && withinWorld)
+			const { pos, target, mass, scope } = this.entity
+
+			const targetDied = !(this.targetIs('place') || target.alive)
+			const backToWorld = this.targetIs('place') && withinWorld
+			const targetStronger = this.targetIs(TYPE_CELL) && (mass <= target.mass)
+			const outOfRange = this.targetIs(TYPE_CELL) && !circleCollision(pos.x, target.pos.x, pos.y, target.pos.y, scope * 2, target.radius).collides
+
+			if (targetDied || backToWorld || targetStronger || outOfRange)
 			{
 				this.entity.target = null
 			}
 			else
 			{
-				this.faceTowards(this.entity.target)
+				this.faceTowards(target)
 			}
 		}
 		else
@@ -84,13 +99,32 @@ export const EntityUpdatesResolver = class extends Singleton
 				// Create 'place' target to make cell go back to world
 
 				const radii = Math.random() * Math.PI * 2
-				const x = Math.cos(radii) * Math.random() * dataM.size
-				const y = Math.sin(radii) * Math.random() * dataM.size
+				const x = Math.cos(radii) * Math.random() * dataM.size / 2
+				const y = Math.sin(radii) * Math.random() * dataM.size / 2
 
 				this.entity.target = {
 					type: 'place',
 					pos: Vector.new(x, y)
 				}
+			}
+			else if (Math.random() > 0.99)
+			{
+				const { pos, scope } = this.entity
+				const possibleTargets = dataM.entityList().filter(t =>
+				{
+					const collision = circleCollision(pos.x, t.pos.x, pos.y, t.pos.y, scope, t.radius)
+
+					if (!collision.collides) return false
+					if (t.type === TYPE_CELL)
+					{
+						if (t.mass > this.entity.mass * 0.9) return false
+						if (t.mass < this.entity.mass * 0.1) return false
+					}
+					
+					return true
+				})
+
+				this.entity.target = possibleTargets[Math.floor(Math.random() * possibleTargets.length)]
 			}
 		}
 
@@ -112,7 +146,7 @@ export const EntityUpdatesResolver = class extends Singleton
 
 	decay ()
 	{
-		this.entity.mass *= 0.9995
+		this.entity.mass *= this.entity.state === 'chasing' ? 0.9995 : 0.9999
 	}
 
 	faceTowards (target)
@@ -148,13 +182,12 @@ export const EntityUpdatesResolver = class extends Singleton
 	{
 		const a = this.entity
 
-		const victims = dataM.entityList().filter(b => b.mass < a.mass)
+		const cells = dataM.getEntitiesList(TYPE_CELL).filter(b => b.mass < a.mass)
+		const prots = dataM.getEntitiesList(TYPE_PROTEIN)
 
-		for (const b of victims)
+		for (const b of cells)
 		{
 			const collision = circleCollision(a.pos.x, b.pos.x, a.pos.y, b.pos.y, a.radius, b.radius)
-
-			window.collision = collision
 
 			if (collision.collides)
 			{
@@ -172,10 +205,51 @@ export const EntityUpdatesResolver = class extends Singleton
 				}
 			}
 		}
+
+		for (const b of prots)
+		{
+			const collision = circleCollision(a.pos.x, b.pos.x, a.pos.y, b.pos.y, a.radius, b.radius)
+
+			if (collision.collides)
+			{
+				a.mass += b.mass
+				b.mass = 0
+			}
+		}
 	}
 
 	hasEnoughtMass ()
 	{
-		return this.entity.mass > 1
+		const { type } = this.entity
+		if (type === TYPE_CELL) return this.entity.mass >= 1
+		if (type === TYPE_PROTEIN) return this.entity.mass > 0
+	}
+
+	rotate ()
+	{
+		const { dir, rotationDir } = this.entity
+
+		let radii = Math.atan2(dir.y, dir.x) + 0.005 * rotationDir
+		
+		if (radii >  Math.PI) radii -= Math.PI
+		if (radii < -Math.PI) radii += Math.PI
+
+		dir.x = Math.cos(radii)
+		dir.y = Math.sin(radii)
+	}
+
+	collisionsUpdate_protein () {}
+
+	tryToBeCell ()
+	{
+		if (Math.random() < 0.999) return
+
+		entitiesM.create(TYPE_CELL, this.entity)
+		entitiesM.kill(this.entity)
+	}
+
+	grow ()
+	{
+		this.entity.mass += this.entity.mass < 1 ? 1 : 1 / this.entity.mass ** 3
 	}
 }

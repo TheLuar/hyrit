@@ -13,13 +13,13 @@ export const Vector = class
 		return { x, y }
 	}
 
-	static random ()
+	static random (scaleX = 1, scaleY = scaleX)
 	{
 		const radii = Math.random() * Math.PI * 2
 
 		return {
-			x: Math.cos(radii),
-			y: Math.sin(radii)
+			x: Math.cos(radii) * scaleX,
+			y: Math.sin(radii) * scaleY
 		}
 	}
 }

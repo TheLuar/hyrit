@@ -3,6 +3,7 @@
 
 // Packages
 
+import { TYPE_CELL, TYPE_PROTEIN } from './consts.js'
 import { HyritConfig } from './HyritConfig.js'
 import { DataManager } from './managers/DataManager.js'
 import { EntitiesManager } from './managers/EntitiesManager.js'
@@ -63,7 +64,7 @@ export const Hyrit = class extends Singleton
 				}
 			}
 
-			entitiesM.create('cell', {
+			entitiesM.create(TYPE_CELL, {
 				pos: Vector.new(x, y)
 			})
 		})
@@ -80,7 +81,9 @@ export const Hyrit = class extends Singleton
 
 	update ()
 	{
-		const entities = Object.keys(dataM.entities).map(id => dataM.entities[id])
+		const entities = dataM.entityList()
+
+		if (Math.random() > 0.95) entitiesM.create(TYPE_PROTEIN)
 
 		for (const entity of entities) euResolver.updatePosition(entity)
 		for (const entity of entities) euResolver.updateCollisions(entity)
