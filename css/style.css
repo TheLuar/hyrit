@@ -1,0 +1,26 @@
+html, body { height: 100% }
+
+body {
+	margin: 0;
+	padding: 0;
+	background-color: #111315;
+	color: #DDDDDD;
+}
+
+#app {
+	position: absolute;
+	display: block;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+}
+
+#app > canvas {
+	position: absolute;
+	display: block;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+}

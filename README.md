@@ -1,2 +1,0 @@
-# hyrit
-Cells
